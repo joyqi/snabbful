@@ -1,0 +1,29 @@
+{
+  "name": "snabbful",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joyqi/snabbful.git"
+  },
+  "keywords": [
+    "snabbdom",
+    "state-management"
+  ],
+  "author": "joyqi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/joyqi/snabbful/issues"
+  },
+  "homepage": "https://github.com/joyqi/snabbful#readme",
+  "devDependencies": {
+    "snabbdom": "^3.5.1",
+    "typescript": "^4.8.4"
+  }
+}
