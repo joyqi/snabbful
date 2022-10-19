@@ -6,6 +6,8 @@ type CallbackFn = () => void
 type RegisterWatcherFn<T> = (k: CallbackFn | keyof T, v?: CallbackFn) => void
 type CommitFn = (fn: CallbackFn) => void
 
+type StateMap<T extends State> = WeakMap<T, [RegisterWatcherFn<T>, CommitFn]>
+
 const stateMap = new WeakMap()
 
 export function createState<T extends State>(init: T): T {
@@ -52,7 +54,7 @@ export function createState<T extends State>(init: T): T {
 }
 
 export function useState<T extends State>(state: T): [RegisterWatcherFn<T>, CommitFn] {
-    const value = stateMap.get(state);
+    const value = (stateMap as StateMap<T>).get(state);
 
     if (!value) {
         throw new Error('State is not initialized');
