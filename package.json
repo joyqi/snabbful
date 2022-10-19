@@ -6,6 +6,8 @@
   "module": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
+    "build": "npx tsc",
+    "example": "npm run build && npx browserify ./lib/example.js > ./example/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -23,6 +25,7 @@
   },
   "homepage": "https://github.com/joyqi/snabbful#readme",
   "devDependencies": {
+    "browserify": "^17.0.0",
     "snabbdom": "^3.5.1",
     "typescript": "^4.8.4"
   }
