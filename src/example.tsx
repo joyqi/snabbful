@@ -1,9 +1,9 @@
-import { jsx, attributesModule, init, toVNode } from "snabbdom";
-import { $ } from "./cash";
-import { initComponent } from "./component";
+import { jsx } from "snabbdom";
+import { $, patchDom } from "./helpers";
+import { initComponent } from "./component/init";
+import { useState } from "./component/state";
 
-const component = initComponent([attributesModule]);
-const patch = init([attributesModule]);
+const component = initComponent();
 
 interface Param {
     value: string
@@ -14,19 +14,32 @@ function View(param: Param) {
 }
 
 function Input(param: Param) {
-    return <input attrs={{
-        readonly: 1,
-        value: param.value
-    }}></input>
+    const click = () => {
+        param.value = '';
+    }
+
+    return <p>
+        <input attrs={{
+            readonly: 1,
+            value: param.value
+        }}></input>
+        <button on={{ click }}>Reset</button>
+    </p>
 }
 
 const [ViewComponent, viewState] = component(View, { value: '' });
 const [InputComponent, inputState] = component(Input, { value: ''});
+
+const [watch] = useState(inputState);
+
+watch("value", () => {
+    console.log(1111)
+})
 
 $<HTMLInputElement>('input')?.addEventListener('input', function() {
     viewState.value = this.value;
     inputState.value = this.value;
 });
 
-patch(toVNode($('#example-panel') as Element), <ViewComponent></ViewComponent>)
-patch(toVNode($('#example-input') as Element), <InputComponent></InputComponent>)
+patchDom('#example-panel', <ViewComponent></ViewComponent>)
+patchDom('#example-input', <InputComponent></InputComponent>)

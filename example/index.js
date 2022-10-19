@@ -1,9 +1,121 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.htmlVNode = exports.$ = void 0;
+exports.initComponent = void 0;
+const snabbdom_1 = require("snabbdom");
+const helpers_1 = require("../helpers");
+const state_1 = require("./state");
+function initComponent(modules) {
+    let defaultPatch = modules ? (0, snabbdom_1.init)(modules) : null;
+    return (fn, params) => {
+        const state = (0, state_1.createState)(params);
+        return [(_, children) => {
+                let vnode = fn(state, children);
+                const patch = defaultPatch || (0, snabbdom_1.init)((0, helpers_1.detectModules)(vnode));
+                const [watch] = (0, state_1.useState)(state);
+                watch(() => {
+                    vnode = patch(vnode, fn(state, children));
+                });
+                return vnode;
+            }, state];
+    };
+}
+exports.initComponent = initComponent;
+
+},{"../helpers":4,"./state":2,"snabbdom":5}],2:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.useState = exports.createState = void 0;
+const stateMap = new WeakMap();
+function createState(init) {
+    const t = {}, state = {};
+    let watchers = [];
+    let isLocked = false;
+    Object.keys(init).forEach((key) => {
+        state[key] = init[key];
+        Object.defineProperty(t, key, {
+            enumerable: true,
+            set: (v) => {
+                state[key] = v;
+                runWatcher(key);
+            },
+            get: () => state[key]
+        });
+    });
+    const watch = (k, v) => {
+        watchers.push(typeof k === 'string' ? [k, v] : ['', k]);
+    };
+    const runWatcher = (k) => {
+        if (!isLocked) {
+            watchers.forEach(fn => {
+                if (fn[0] === k || fn[0] === '') {
+                    fn[1]();
+                }
+            });
+        }
+    };
+    const commit = (fn) => {
+        isLocked = true;
+        fn();
+        isLocked = false;
+        runWatcher('');
+    };
+    stateMap.set(t, [watch, commit]);
+    return t;
+}
+exports.createState = createState;
+function useState(state) {
+    const value = stateMap.get(state);
+    if (!value) {
+        throw new Error('State is not initialized');
+    }
+    return value;
+}
+exports.useState = useState;
+
+},{}],3:[function(require,module,exports){
+"use strict";
+var _a;
+Object.defineProperty(exports, "__esModule", { value: true });
+const snabbdom_1 = require("snabbdom");
+const helpers_1 = require("./helpers");
+const init_1 = require("./component/init");
+const state_1 = require("./component/state");
+const component = (0, init_1.initComponent)();
+function View(param) {
+    return (0, snabbdom_1.jsx)("div", null, param.value);
+}
+function Input(param) {
+    const click = () => {
+        param.value = '';
+    };
+    return (0, snabbdom_1.jsx)("p", null,
+        (0, snabbdom_1.jsx)("input", { attrs: {
+                readonly: 1,
+                value: param.value
+            } }),
+        (0, snabbdom_1.jsx)("button", { on: { click } }, "Reset"));
+}
+const [ViewComponent, viewState] = component(View, { value: '' });
+const [InputComponent, inputState] = component(Input, { value: '' });
+const [watch] = (0, state_1.useState)(inputState);
+watch("value", () => {
+    console.log(1111);
+});
+(_a = (0, helpers_1.$)('input')) === null || _a === void 0 ? void 0 : _a.addEventListener('input', function () {
+    viewState.value = this.value;
+    inputState.value = this.value;
+});
+(0, helpers_1.patchDom)('#example-panel', (0, snabbdom_1.jsx)(ViewComponent, null));
+(0, helpers_1.patchDom)('#example-input', (0, snabbdom_1.jsx)(InputComponent, null));
+
+},{"./component/init":1,"./component/state":2,"./helpers":4,"snabbdom":5}],4:[function(require,module,exports){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.htmlVNode = exports.patchDom = exports.detectModules = exports.$ = void 0;
 const snabbdom_1 = require("snabbdom");
 /**
+ * Query selector
  *
  * @param sel selector
  * @param parent parent node
@@ -20,6 +132,61 @@ function $(sel, parent) {
     return node;
 }
 exports.$ = $;
+function detectModules(vnode) {
+    var _a, _b, _c, _d, _e, _f;
+    const modules = [];
+    if ((_a = vnode.data) === null || _a === void 0 ? void 0 : _a.attrs) {
+        modules.push(snabbdom_1.attributesModule);
+    }
+    if ((_b = vnode.data) === null || _b === void 0 ? void 0 : _b.class) {
+        modules.push(snabbdom_1.classModule);
+    }
+    if ((_c = vnode.data) === null || _c === void 0 ? void 0 : _c.on) {
+        modules.push(snabbdom_1.eventListenersModule);
+    }
+    if ((_d = vnode.data) === null || _d === void 0 ? void 0 : _d.props) {
+        modules.push(snabbdom_1.propsModule);
+    }
+    if ((_e = vnode.data) === null || _e === void 0 ? void 0 : _e.dataset) {
+        modules.push(snabbdom_1.datasetModule);
+    }
+    if ((_f = vnode.data) === null || _f === void 0 ? void 0 : _f.style) {
+        modules.push(snabbdom_1.styleModule);
+    }
+    if (vnode.children && vnode.children.length > 0) {
+        for (const child of vnode.children) {
+            if (typeof child === 'string') {
+                continue;
+            }
+            const childModules = detectModules(child);
+            childModules.forEach(module => {
+                if (!modules.includes(module)) {
+                    modules.push(module);
+                }
+            });
+        }
+    }
+    return modules;
+}
+exports.detectModules = detectModules;
+function patchDom(parent, vnode) {
+    const modules = detectModules(vnode);
+    const patch = (0, snabbdom_1.init)(modules);
+    if (typeof parent === 'string') {
+        const node = $(parent);
+        if (!node) {
+            return;
+        }
+        parent = node;
+    }
+    patch(parent, vnode);
+}
+exports.patchDom = patchDom;
+/**
+ * Create a VNode from a html string
+ *
+ * @param html html string
+ */
 function htmlVNode(html) {
     const el = document.createElement('div');
     el.innerHTML = html;
@@ -28,85 +195,7 @@ function htmlVNode(html) {
 }
 exports.htmlVNode = htmlVNode;
 
-},{"snabbdom":4}],2:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.initComponent = void 0;
-const snabbdom_1 = require("snabbdom");
-function createState(init) {
-    const t = {}, state = {};
-    let watcher = null;
-    let isLocked = false;
-    Object.keys(init).forEach((key) => {
-        state[key] = init[key];
-        Object.defineProperty(t, key, {
-            enumerable: true,
-            set: (v) => {
-                state[key] = v;
-                runWatcher();
-            },
-            get: () => state[key]
-        });
-    });
-    const watch = (fn) => {
-        watcher = fn;
-    };
-    const runWatcher = () => {
-        if (!isLocked && watcher) {
-            watcher();
-        }
-    };
-    const commit = (fn) => {
-        isLocked = true;
-        fn();
-        isLocked = false;
-        runWatcher();
-    };
-    return [t, watch, commit];
-}
-function initComponent(modules) {
-    const patch = (0, snabbdom_1.init)(modules);
-    return (fn, init) => {
-        const [state, watch, commit] = createState(init);
-        return [(_, children) => {
-                let vnode = fn(state, children);
-                watch(() => {
-                    vnode = patch(vnode, fn(state, children));
-                });
-                return vnode;
-            }, state, commit];
-    };
-}
-exports.initComponent = initComponent;
-
-},{"snabbdom":4}],3:[function(require,module,exports){
-"use strict";
-var _a;
-Object.defineProperty(exports, "__esModule", { value: true });
-const snabbdom_1 = require("snabbdom");
-const cash_1 = require("./cash");
-const component_1 = require("./component");
-const component = (0, component_1.initComponent)([snabbdom_1.attributesModule]);
-const patch = (0, snabbdom_1.init)([snabbdom_1.attributesModule]);
-function View(param) {
-    return (0, snabbdom_1.jsx)("div", null, param.value);
-}
-function Input(param) {
-    return (0, snabbdom_1.jsx)("input", { attrs: {
-            readonly: 1,
-            value: param.value
-        } });
-}
-const [ViewComponent, viewState] = component(View, { value: '' });
-const [InputComponent, inputState] = component(Input, { value: '' });
-(_a = (0, cash_1.$)('input')) === null || _a === void 0 ? void 0 : _a.addEventListener('input', function () {
-    viewState.value = this.value;
-    inputState.value = this.value;
-});
-patch((0, snabbdom_1.toVNode)((0, cash_1.$)('#example-panel')), (0, snabbdom_1.jsx)(ViewComponent, null));
-patch((0, snabbdom_1.toVNode)((0, cash_1.$)('#example-input')), (0, snabbdom_1.jsx)(InputComponent, null));
-
-},{"./cash":1,"./component":2,"snabbdom":4}],4:[function(require,module,exports){
+},{"snabbdom":5}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });

@@ -1,3 +1,4 @@
-export { $ } from './cash'
+export { $, htmlVNode, patchDom, detectModules } from './helpers'
 
-export { initComponent } from './component'
+export { initComponent } from './component/init'
+export { State, useState } from './component/state'
