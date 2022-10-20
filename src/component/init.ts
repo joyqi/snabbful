@@ -1,6 +1,6 @@
 import { VNode, init, Module } from 'snabbdom';
 import { detectModules } from '../helpers';
-import { createState, State, useState } from './state';
+import { createState, State, watch } from './state';
 
 type NullParams = {};
 type TypedFunctionComponent<T> = (props: T, children?: VNode[]) => VNode;
@@ -15,9 +15,8 @@ export function initComponent(modules?: Module[]) {
         return [(_: NullParams, children?: VNode[]): VNode => {
             let vnode = fn(state, children);
             const patch = defaultPatch || init(detectModules(vnode));
-            const [watch] = useState(state);
 
-            watch(() => {
+            watch(state, () => {
                 vnode = patch(vnode, fn(state, children));
             });
 

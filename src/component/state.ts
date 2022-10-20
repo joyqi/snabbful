@@ -1,45 +1,40 @@
 export type State = Record<string, any>;
-type CallbackFn<T> = (s: T) => void;
 
-type GeneralWatcherRegister<T> = (fn: CallbackFn<T>) => void;
+type Watcher<T> = (k: '' | keyof T, s: T) => void;
 
-type SpecifiedWatcherRegister<T, K extends keyof T> = (key: K, fn: CallbackFn<T[K]>) => void;
-
-type WatcherRegister<T> = (k: CallbackFn<T> | keyof T, v?: CallbackFn<T>) => void;
+type WatcherRegister<T> = (fn: Watcher<T>) => void;
 
 /**
  * Commit a state change.
  */
-type BatchCommitter<T> = (s: T) => void;
-
-/**
- * Commit a single value change.
- */
-type SingleCommitter<T> = (v: T) => T;
+type Committer<T> = (s: T) => void;
 
 /**
  * Perform a batch commit.
  */
-type BatchedCommitRunner<T> = (fn: BatchCommitter<T>, _: undefined) => void;
+type CommitterRunner<T> = (fn: Committer<T>) => void;
 
-/**
- * Perform a single value changing commit function.
- */
-type SingleCommitRunner<T, K extends keyof T> = (key: K, fn: SingleCommitter<T[K]>) => void;
-
-/**
- * Perform a commit action.
- */
-type CommitRunner<T> = BatchedCommitRunner<T> & SingleCommitRunner<T, keyof T>;
-
-type StateMap<T extends State> = WeakMap<T, [WatcherRegister<T>, CommitRunner<T>]>;
+enum Effector {
+    Watcher = 0,
+    Committer,
+}
 
 // Store the state and its watchers, keyed by the state object.
-const stateMap = new WeakMap();
+const effectorMap = new WeakMap();
+
+function peekEffector<T extends State>(state: T, t: Effector): WatcherRegister<T> | CommitterRunner<T> {
+    const map = effectorMap.get(state);
+
+    if (!map) {
+        throw new Error('State not found.');
+    }
+
+    return map[t];
+}
 
 export function createState<T extends State>(init: T): T {
     const t = {} as T, state: State = {};
-    let watchers: [string, CallbackFn<T>][] = [];
+    let watchers: Watcher<T>[] = [];
     let isLocked = false;
 
     Object.keys(init).forEach((key: string) => {
@@ -57,60 +52,34 @@ export function createState<T extends State>(init: T): T {
 
     // Register a watcher for the given key.
     // If the key is a function, it will be called when the state is changed.
-    const watch: WatcherRegister<T> = (k, v) => {
-        let key: string, fn: CallbackFn<T>;
-
-        if (typeof k === 'string' && typeof v === 'function') {
-            key = k;
-            fn = v;
-        } else if (typeof k === 'function') {
-            key = '';
-            fn = k;
-        } else {
-            throw new Error('Invalid arguments');
-        }
-
-        watchers.push([key, fn]);
+    const watch: WatcherRegister<T> = (fn) => {
+        watchers.push(fn) 
     };
 
     // Trigger the watcher for the given key.
     const triggerWatcher = (k: string) => {
         if (!isLocked) {
-            watchers.forEach(fn => {
-                if (fn[0] === k) {
-                    fn[1](t[k]);
-                } else if (fn[0] === '') {
-                    fn[1](t);
-                }
-            });
+            watchers.forEach(fn => fn(k, t));
         }
     };
 
     // Trigger the commit function atomically.
-    const commit: CommitRunner<T> = (k, v) => {
-        if (typeof k === 'string' && typeof v === 'function') {
-            t[k as keyof T] = v(t[k]);
-        } else if (typeof k === 'function') {
-            isLocked = true;
-            k(t);
-            isLocked = false;
+    const commit: CommitterRunner<T> = (fn) => {
+        isLocked = true;
+        fn(t);
+        isLocked = false;
             
-            triggerWatcher('');
-        } else {
-            throw new Error('Invalid arguments');
-        }
+        triggerWatcher('');
     };
 
-    stateMap.set(t, [watch, commit]);
+    effectorMap.set(t, [watch, commit]);
     return t;
 }
 
-export function useState<T extends State>(state: T): [WatcherRegister<T>, CommitRunner<T>] {
-    const value = (stateMap as StateMap<T>).get(state);
+export function commit<T extends State>(state: T, fn: Committer<T>) {
+    (peekEffector(state, Effector.Committer) as CommitterRunner<T>)(fn);
+}
 
-    if (!value) {
-        throw new Error('State is not initialized');
-    }
-
-    return value;
+export function watch<T extends State>(state: T, fn: Watcher<T>) {
+    (peekEffector(state, Effector.Watcher) as WatcherRegister<T>)(fn);
 }

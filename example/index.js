@@ -12,8 +12,7 @@ function initComponent(modules) {
         return [(_, children) => {
                 let vnode = fn(state, children);
                 const patch = defaultPatch || (0, snabbdom_1.init)((0, helpers_1.detectModules)(vnode));
-                const [watch] = (0, state_1.useState)(state);
-                watch(() => {
+                (0, state_1.watch)(state, () => {
                     vnode = patch(vnode, fn(state, children));
                 });
                 return vnode;
@@ -25,9 +24,21 @@ exports.initComponent = initComponent;
 },{"../helpers":4,"./state":2,"snabbdom":5}],2:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.useState = exports.createState = void 0;
+exports.watch = exports.commit = exports.createState = void 0;
+var Effector;
+(function (Effector) {
+    Effector[Effector["Watcher"] = 0] = "Watcher";
+    Effector[Effector["Committer"] = 1] = "Committer";
+})(Effector || (Effector = {}));
 // Store the state and its watchers, keyed by the state object.
-const stateMap = new WeakMap();
+const effectorMap = new WeakMap();
+function peekEffector(state, t) {
+    const map = effectorMap.get(state);
+    if (!map) {
+        throw new Error('State not found.');
+    }
+    return map[t];
+}
 function createState(init) {
     const t = {}, state = {};
     let watchers = [];
@@ -45,61 +56,34 @@ function createState(init) {
     });
     // Register a watcher for the given key.
     // If the key is a function, it will be called when the state is changed.
-    const watch = (k, v) => {
-        let key, fn;
-        if (typeof k === 'string' && typeof v === 'function') {
-            key = k;
-            fn = v;
-        }
-        else if (typeof k === 'function') {
-            key = '';
-            fn = k;
-        }
-        else {
-            throw new Error('Invalid arguments');
-        }
-        watchers.push([key, fn]);
+    const watch = (fn) => {
+        watchers.push(fn);
     };
     // Trigger the watcher for the given key.
     const triggerWatcher = (k) => {
         if (!isLocked) {
-            watchers.forEach(fn => {
-                if (fn[0] === k) {
-                    fn[1](t[k]);
-                }
-                else if (fn[0] === '') {
-                    fn[1](t);
-                }
-            });
+            watchers.forEach(fn => fn(k, t));
         }
     };
     // Trigger the commit function atomically.
-    const commit = (k, v) => {
-        if (typeof k === 'string' && typeof v === 'function') {
-            t[k] = v(t[k]);
-        }
-        else if (typeof k === 'function') {
-            isLocked = true;
-            k(t);
-            isLocked = false;
-            triggerWatcher('');
-        }
-        else {
-            throw new Error('Invalid arguments');
-        }
+    const commit = (fn) => {
+        isLocked = true;
+        fn(t);
+        isLocked = false;
+        triggerWatcher('');
     };
-    stateMap.set(t, [watch, commit]);
+    effectorMap.set(t, [watch, commit]);
     return t;
 }
 exports.createState = createState;
-function useState(state) {
-    const value = stateMap.get(state);
-    if (!value) {
-        throw new Error('State is not initialized');
-    }
-    return value;
+function commit(state, fn) {
+    peekEffector(state, Effector.Committer)(fn);
 }
-exports.useState = useState;
+exports.commit = commit;
+function watch(state, fn) {
+    peekEffector(state, Effector.Watcher)(fn);
+}
+exports.watch = watch;
 
 },{}],3:[function(require,module,exports){
 "use strict";
@@ -116,6 +100,9 @@ function View(param) {
 function Input(param) {
     const click = () => {
         param.value = '';
+        (0, state_1.commit)(viewState, (s) => {
+            s.value = '';
+        });
     };
     return (0, snabbdom_1.jsx)("p", null,
         (0, snabbdom_1.jsx)("input", { attrs: {
@@ -124,11 +111,10 @@ function Input(param) {
             } }),
         (0, snabbdom_1.jsx)("button", { on: { click } }, "Reset"));
 }
-const [ViewComponent, viewState] = component(View, { value: '' });
-const [InputComponent, inputState] = component(Input, { value: '' });
-const [watch] = (0, state_1.useState)(inputState);
-watch('value', (value) => {
-    console.log(value);
+const [ViewComponent, viewState] = component(View, { value: '', count: 0 });
+const [InputComponent, inputState] = component(Input, { value: '', count: 0 });
+(0, state_1.watch)(inputState, (k) => {
+    console.log(k);
 });
 (_a = (0, helpers_1.$)('input')) === null || _a === void 0 ? void 0 : _a.addEventListener('input', function () {
     viewState.value = this.value;

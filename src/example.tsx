@@ -1,7 +1,7 @@
 import { jsx } from 'snabbdom';
 import { $, patchDom } from './helpers';
 import { initComponent } from './component/init';
-import { useState } from './component/state';
+import { commit, watch } from './component/state';
 
 const component = initComponent();
 
@@ -17,6 +17,10 @@ function View(param: Param) {
 function Input(param: Param) {
     const click = () => {
         param.value = '';
+
+        commit(viewState, (s) => {
+            s.value = '';
+        });
     };
 
     return <p>
@@ -31,10 +35,8 @@ function Input(param: Param) {
 const [ViewComponent, viewState] = component(View, { value: '', count: 0 });
 const [InputComponent, inputState] = component(Input, { value: '', count: 0 });
 
-const [watch] = useState(inputState);
-
-watch('value', (value) => {
-    console.log(value);
+watch(inputState, (k) => {
+    console.log(k);
 });
 
 $<HTMLInputElement>('input')?.addEventListener('input', function() {
