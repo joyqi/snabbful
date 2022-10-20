@@ -1,22 +1,23 @@
-import { jsx } from "snabbdom";
-import { $, patchDom } from "./helpers";
-import { initComponent } from "./component/init";
-import { useState } from "./component/state";
+import { jsx } from 'snabbdom';
+import { $, patchDom } from './helpers';
+import { initComponent } from './component/init';
+import { useState } from './component/state';
 
 const component = initComponent();
 
 interface Param {
     value: string
+    count: number
 }
 
 function View(param: Param) {
-    return <div>{ param.value }</div>
+    return <div>{ param.value }</div>;
 }
 
 function Input(param: Param) {
     const click = () => {
         param.value = '';
-    }
+    };
 
     return <p>
         <input attrs={{
@@ -24,22 +25,22 @@ function Input(param: Param) {
             value: param.value
         }}></input>
         <button on={{ click }}>Reset</button>
-    </p>
+    </p>;
 }
 
-const [ViewComponent, viewState] = component(View, { value: '' });
-const [InputComponent, inputState] = component(Input, { value: ''});
+const [ViewComponent, viewState] = component(View, { value: '', count: 0 });
+const [InputComponent, inputState] = component(Input, { value: '', count: 0 });
 
 const [watch] = useState(inputState);
 
-watch("value", () => {
-    console.log(1111)
-})
+watch('value', (value) => {
+    console.log(value);
+});
 
 $<HTMLInputElement>('input')?.addEventListener('input', function() {
     viewState.value = this.value;
     inputState.value = this.value;
 });
 
-patchDom('#example-panel', <ViewComponent></ViewComponent>)
-patchDom('#example-input', <InputComponent></InputComponent>)
+patchDom('#example-panel', <ViewComponent></ViewComponent>);
+patchDom('#example-input', <InputComponent></InputComponent>);

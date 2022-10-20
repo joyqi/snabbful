@@ -26,6 +26,7 @@ exports.initComponent = initComponent;
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.useState = exports.createState = void 0;
+// Store the state and its watchers, keyed by the state object.
 const stateMap = new WeakMap();
 function createState(init) {
     const t = {}, state = {};
@@ -37,28 +38,55 @@ function createState(init) {
             enumerable: true,
             set: (v) => {
                 state[key] = v;
-                runWatcher(key);
+                triggerWatcher(key);
             },
             get: () => state[key]
         });
     });
+    // Register a watcher for the given key.
+    // If the key is a function, it will be called when the state is changed.
     const watch = (k, v) => {
-        watchers.push(typeof k === 'string' ? [k, v] : ['', k]);
+        let key, fn;
+        if (typeof k === 'string' && typeof v === 'function') {
+            key = k;
+            fn = v;
+        }
+        else if (typeof k === 'function') {
+            key = '';
+            fn = k;
+        }
+        else {
+            throw new Error('Invalid arguments');
+        }
+        watchers.push([key, fn]);
     };
-    const runWatcher = (k) => {
+    // Trigger the watcher for the given key.
+    const triggerWatcher = (k) => {
         if (!isLocked) {
             watchers.forEach(fn => {
-                if (fn[0] === k || fn[0] === '') {
-                    fn[1]();
+                if (fn[0] === k) {
+                    fn[1](t[k]);
+                }
+                else if (fn[0] === '') {
+                    fn[1](t);
                 }
             });
         }
     };
-    const commit = (fn) => {
-        isLocked = true;
-        fn();
-        isLocked = false;
-        runWatcher('');
+    // Trigger the commit function atomically.
+    const commit = (k, v) => {
+        if (typeof k === 'string' && typeof v === 'function') {
+            t[k] = v(t[k]);
+        }
+        else if (typeof k === 'function') {
+            isLocked = true;
+            k(t);
+            isLocked = false;
+            triggerWatcher('');
+        }
+        else {
+            throw new Error('Invalid arguments');
+        }
     };
     stateMap.set(t, [watch, commit]);
     return t;
@@ -99,8 +127,8 @@ function Input(param) {
 const [ViewComponent, viewState] = component(View, { value: '' });
 const [InputComponent, inputState] = component(Input, { value: '' });
 const [watch] = (0, state_1.useState)(inputState);
-watch("value", () => {
-    console.log(1111);
+watch('value', (value) => {
+    console.log(value);
 });
 (_a = (0, helpers_1.$)('input')) === null || _a === void 0 ? void 0 : _a.addEventListener('input', function () {
     viewState.value = this.value;
@@ -116,12 +144,10 @@ exports.htmlVNode = exports.patchDom = exports.detectModules = exports.$ = void 
 const snabbdom_1 = require("snabbdom");
 /**
  * Query selector
- *
- * @param sel selector
- * @param parent parent node
  */
 function $(sel, parent) {
-    const root = parent ? (typeof parent === 'string' ? document.querySelector(parent) : parent) : document;
+    const root = parent ?
+        (typeof parent === 'string' ? document.querySelector(parent) : parent) : document;
     if (!root) {
         return null;
     }
@@ -132,6 +158,11 @@ function $(sel, parent) {
     return node;
 }
 exports.$ = $;
+/**
+ * Detect the modules by the given vnode.
+ * This function will be triggered recursively, if the vnode has children.
+ * Please note the performance issue.
+ */
 function detectModules(vnode) {
     var _a, _b, _c, _d, _e, _f;
     const modules = [];
@@ -169,6 +200,10 @@ function detectModules(vnode) {
     return modules;
 }
 exports.detectModules = detectModules;
+/**
+ * Patch the vnode to the given element.
+ * The element can be a selector or an element.
+ */
 function patchDom(parent, vnode) {
     const modules = detectModules(vnode);
     const patch = (0, snabbdom_1.init)(modules);
@@ -184,8 +219,6 @@ function patchDom(parent, vnode) {
 exports.patchDom = patchDom;
 /**
  * Create a VNode from a html string
- *
- * @param html html string
  */
 function htmlVNode(html) {
     const el = document.createElement('div');

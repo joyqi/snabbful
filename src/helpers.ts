@@ -1,13 +1,23 @@
-import { toVNode, VNode, Fragment, Module, attributesModule, classModule, eventListenersModule, propsModule, datasetModule, styleModule, init } from "snabbdom";
+import {
+    toVNode,
+    VNode,
+    Fragment,
+    Module,
+    attributesModule,
+    classModule,
+    eventListenersModule,
+    propsModule,
+    datasetModule,
+    styleModule,
+    init
+} from 'snabbdom';
 
 /**
  * Query selector
- *  
- * @param sel selector
- * @param parent parent node
  */
 export function $<T extends Element>(sel: string, parent?: string | ParentNode): T | null {
-    const root: ParentNode | null = parent ? (typeof parent === 'string' ? document.querySelector(parent) : parent) : document;
+    const root: ParentNode | null = parent ?
+        (typeof parent === 'string' ? document.querySelector(parent) : parent) : document;
 
     if (!root) {
         return null;
@@ -22,6 +32,11 @@ export function $<T extends Element>(sel: string, parent?: string | ParentNode):
     return node;
 }
 
+/**
+ * Detect the modules by the given vnode.
+ * This function will be triggered recursively, if the vnode has children.
+ * Please note the performance issue.
+ */
 export function detectModules(vnode: VNode) {
     const modules: Module[] = [];
 
@@ -68,6 +83,10 @@ export function detectModules(vnode: VNode) {
     return modules;
 }
 
+/**
+ * Patch the vnode to the given element.
+ * The element can be a selector or an element.
+ */
 export function patchDom(parent: Element | string, vnode: VNode) {
     const modules = detectModules(vnode);
     const patch = init(modules);
@@ -87,8 +106,6 @@ export function patchDom(parent: Element | string, vnode: VNode) {
 
 /**
  * Create a VNode from a html string
- * 
- * @param html html string
  */
 export function htmlVNode(html: string): VNode {
     const el = document.createElement('div');

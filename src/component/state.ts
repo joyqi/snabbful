@@ -1,18 +1,41 @@
-export interface State {
-    [key: string]: any
-}
+export type State = Record<string, any>;
+type CallbackFn<T> = (s: T) => void;
 
-type CallbackFn = () => void
-type RegisterWatcherFn<T> = (k: CallbackFn | keyof T, v?: CallbackFn) => void
-type CommitFn = (fn: CallbackFn) => void
+type RegisterWatcherFn<T> = (k: CallbackFn<T> | keyof T, v?: CallbackFn<T>) => void;
 
-type StateMap<T extends State> = WeakMap<T, [RegisterWatcherFn<T>, CommitFn]>
+/**
+ * Commit a state change.
+ */
+type BatchCommitter<T> = (s: T) => void;
 
-const stateMap = new WeakMap()
+/**
+ * Commit a single value change.
+ */
+type SingleCommitter<T> = (v: T) => T;
+
+/**
+ * Perform a batch commit.
+ */
+type BatchedCommitRunner<T> = (fn: BatchCommitter<T>, _: undefined) => void;
+
+/**
+ * Perform a single value changing commit function.
+ */
+type SingleCommitRunner<T, K extends keyof T> = (key: K, fn: SingleCommitter<T[K]>) => void;
+
+/**
+ * Perform a commit action.
+ */
+type CommitRunner<T> = BatchedCommitRunner<T> & SingleCommitRunner<T, keyof T>;
+
+type StateMap<T extends State> = WeakMap<T, [RegisterWatcherFn<T>, CommitRunner<T>]>;
+
+// Store the state and its watchers, keyed by the state object.
+const stateMap = new WeakMap();
 
 export function createState<T extends State>(init: T): T {
-    const t: T = {} as T, state: State = {};
-    let watchers: [string, CallbackFn][] = [];
+    const t = {} as T, state: State = {};
+    let watchers: [string, CallbackFn<T>][] = [];
     let isLocked = false;
 
     Object.keys(init).forEach((key: string) => {
@@ -22,38 +45,63 @@ export function createState<T extends State>(init: T): T {
             enumerable: true,
             set: (v) => {
                 state[key] = v;
-                runWatcher(key);
+                triggerWatcher(key);
             },
             get: () => state[key]
         });
     });
 
+    // Register a watcher for the given key.
+    // If the key is a function, it will be called when the state is changed.
     const watch: RegisterWatcherFn<T> = (k, v) => {
-        watchers.push(typeof k === 'string' ? [k, v as CallbackFn] : ['', k as CallbackFn]);
-    }
+        let key: string, fn: CallbackFn<T>;
 
-    const runWatcher = (k: string) => {
+        if (typeof k === 'string' && typeof v === 'function') {
+            key = k;
+            fn = v;
+        } else if (typeof k === 'function') {
+            key = '';
+            fn = k;
+        } else {
+            throw new Error('Invalid arguments');
+        }
+
+        watchers.push([key, fn]);
+    };
+
+    // Trigger the watcher for the given key.
+    const triggerWatcher = (k: string) => {
         if (!isLocked) {
             watchers.forEach(fn => {
-                if (fn[0] === k || fn[0] === '') {
-                    fn[1]();
+                if (fn[0] === k) {
+                    fn[1](t[k]);
+                } else if (fn[0] === '') {
+                    fn[1](t);
                 }
             });
         }
-    }
+    };
 
-    const commit: CommitFn = (fn) => {
-        isLocked = true;
-        fn();
-        isLocked = false;
-        runWatcher('');
-    }
+    // Trigger the commit function atomically.
+    const commit: CommitRunner<T> = (k, v) => {
+        if (typeof k === 'string' && typeof v === 'function') {
+            t[k as keyof T] = v(t[k]);
+        } else if (typeof k === 'function') {
+            isLocked = true;
+            k(t);
+            isLocked = false;
+            
+            triggerWatcher('');
+        } else {
+            throw new Error('Invalid arguments');
+        }
+    };
 
     stateMap.set(t, [watch, commit]);
     return t;
 }
 
-export function useState<T extends State>(state: T): [RegisterWatcherFn<T>, CommitFn] {
+export function useState<T extends State>(state: T): [RegisterWatcherFn<T>, CommitRunner<T>] {
     const value = (stateMap as StateMap<T>).get(state);
 
     if (!value) {
