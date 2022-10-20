@@ -1,7 +1,11 @@
 export type State = Record<string, any>;
 type CallbackFn<T> = (s: T) => void;
 
-type RegisterWatcherFn<T> = (k: CallbackFn<T> | keyof T, v?: CallbackFn<T>) => void;
+type GeneralWatcherRegister<T> = (fn: CallbackFn<T>) => void;
+
+type SpecifiedWatcherRegister<T, K extends keyof T> = (key: K, fn: CallbackFn<T[K]>) => void;
+
+type WatcherRegister<T> = (k: CallbackFn<T> | keyof T, v?: CallbackFn<T>) => void;
 
 /**
  * Commit a state change.
@@ -28,7 +32,7 @@ type SingleCommitRunner<T, K extends keyof T> = (key: K, fn: SingleCommitter<T[K
  */
 type CommitRunner<T> = BatchedCommitRunner<T> & SingleCommitRunner<T, keyof T>;
 
-type StateMap<T extends State> = WeakMap<T, [RegisterWatcherFn<T>, CommitRunner<T>]>;
+type StateMap<T extends State> = WeakMap<T, [WatcherRegister<T>, CommitRunner<T>]>;
 
 // Store the state and its watchers, keyed by the state object.
 const stateMap = new WeakMap();
@@ -53,7 +57,7 @@ export function createState<T extends State>(init: T): T {
 
     // Register a watcher for the given key.
     // If the key is a function, it will be called when the state is changed.
-    const watch: RegisterWatcherFn<T> = (k, v) => {
+    const watch: WatcherRegister<T> = (k, v) => {
         let key: string, fn: CallbackFn<T>;
 
         if (typeof k === 'string' && typeof v === 'function') {
@@ -101,7 +105,7 @@ export function createState<T extends State>(init: T): T {
     return t;
 }
 
-export function useState<T extends State>(state: T): [RegisterWatcherFn<T>, CommitRunner<T>] {
+export function useState<T extends State>(state: T): [WatcherRegister<T>, CommitRunner<T>] {
     const value = (stateMap as StateMap<T>).get(state);
 
     if (!value) {
