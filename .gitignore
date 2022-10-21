@@ -82,6 +82,7 @@ typings/
 .nuxt
 dist
 lib
+example/index.js
 
 # Gatsby files
 .cache/
