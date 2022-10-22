@@ -8,6 +8,7 @@ interface Ref<T> {
     readonly snapshot: () => T;
     readonly emit: (event: string, data?: any) => void;
     readonly on: (event: string, fn: (data?: any) => void) => void;
+    readonly keep: <T>(value: T, key?: string) => T;
 }
 
 // Store the state and its watchers, keyed by the state object.
@@ -26,6 +27,7 @@ export function ref<T extends State>(state: T): Ref<T> {
 export function createState<T extends State>(init: T): T {
     const t = {} as T;
     const state: State = {};
+    const keepers: Record<string, any> = {};
     const dom = document.createDocumentFragment();
     let effectors: Effector[] = [];
 
@@ -70,6 +72,14 @@ export function createState<T extends State>(init: T): T {
         });
     };
 
-    (refMap as WeakMap<T, Ref<T>>).set(t, {effect, commit, snapshot, emit, on});
+    const keep = <T>(value: T, key = '') => {
+        if (!keepers[key]) {
+            keepers[key] = value;
+        }
+
+        return keepers[key];
+    };
+
+    (refMap as WeakMap<T, Ref<T>>).set(t, {effect, commit, snapshot, emit, on, keep});
     return t;
 }
