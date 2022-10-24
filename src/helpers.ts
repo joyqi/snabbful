@@ -15,18 +15,18 @@ import {
 /**
  * Query selector
  */
-export function $<T extends Element>(sel: string, parent?: string | ParentNode): T | null {
+export function $<T extends Element>(sel: string, parent?: string | ParentNode): T {
     const root: ParentNode | null = parent ?
         (typeof parent === 'string' ? document.querySelector(parent) : parent) : document;
 
     if (!root) {
-        return null;
+        throw new Error('Root element not found');
     }
 
     const node = root.querySelector<T>(sel);
 
     if (!node) {
-        return null;
+        throw new Error(`Element not found: ${sel}`);
     }
 
     return node;
@@ -109,8 +109,18 @@ export function patchDom(parent: Element | string, vnode: VNode) {
  */
 export function htmlVNode(html: string): VNode {
     const el = document.createElement('div');
-    el.innerHTML = html;
+    el.innerHTML = html.trim();
     const vnode = toVNode(el);
 
-    return Fragment(null, vnode.children);
+    if (vnode.children && vnode.children.length === 1) {
+        const firstChild = vnode.children[0];
+
+        if (typeof firstChild === 'string') {
+            throw new Error('The html string must have a root element');
+        }
+
+        return firstChild;
+    } else {
+        return Fragment(null, vnode.children);
+    }
 }
