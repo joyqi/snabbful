@@ -87,9 +87,8 @@ export function detectModules(vnode: VNode) {
  * Patch the vnode to the given element.
  * The element can be a selector or an element.
  */
-export function patchDom(parent: Element | string, vnode: VNode) {
-    const modules = detectModules(vnode);
-    const patch = init(modules);
+export function patchDom(parent: Element | string, vnode: VNode, modules?: Module[]) {
+    const patch = init(modules || detectModules(vnode), undefined, { experimental: { fragments: true } });
 
     if (typeof parent === 'string') {
         const node = $(parent);
