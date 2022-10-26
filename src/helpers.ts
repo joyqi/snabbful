@@ -8,8 +8,7 @@ import {
     eventListenersModule,
     propsModule,
     datasetModule,
-    styleModule,
-    init
+    styleModule
 } from 'snabbdom';
 
 /**
@@ -81,26 +80,6 @@ export function detectModules(vnode: VNode) {
     }
 
     return modules;
-}
-
-/**
- * Patch the vnode to the given element.
- * The element can be a selector or an element.
- */
-export function patchDom(parent: Element | string, vnode: VNode, modules?: Module[]) {
-    const patch = init(modules || detectModules(vnode), undefined, { experimental: { fragments: true } });
-
-    if (typeof parent === 'string') {
-        const node = $(parent);
-
-        if (!node) {
-            return;
-        }
-
-        parent = node;
-    }
-
-    patch(parent, vnode);
 }
 
 /**
