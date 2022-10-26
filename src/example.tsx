@@ -1,9 +1,10 @@
-import { jsx } from 'snabbdom';
-import { $, patchDom } from './helpers';
+import { attributesModule, eventListenersModule, init, jsx, toVNode } from 'snabbdom';
+import { $ } from './helpers';
 import { initComponent } from './component/init';
 import { ref } from './component/state';
 
-const component = initComponent();
+const component = initComponent([attributesModule, eventListenersModule]);
+const patch = init([attributesModule, eventListenersModule]);
 
 interface Param {
     value: string
@@ -49,5 +50,5 @@ $<HTMLInputElement>('input')?.addEventListener('input', function() {
     ref(inputState).commit();
 });
 
-patchDom('#example-panel', <ViewComponent></ViewComponent>);
-patchDom('#example-input', <InputComponent></InputComponent>);
+patch(toVNode($('#example-panel')), <ViewComponent></ViewComponent>);
+patch(toVNode($('#example-input')), <InputComponent></InputComponent>);
