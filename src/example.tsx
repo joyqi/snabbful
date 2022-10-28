@@ -34,7 +34,7 @@ function Input(param: Param) {
 const [ViewComponent, viewState] = component(View, { value: '', count: 0 });
 const [InputComponent, inputState] = component(Input, { value: '', count: 0 });
 
-ref(inputState).effect(() => {
+ref(inputState).watch(() => {
     console.log(inputState.value);
 });
 

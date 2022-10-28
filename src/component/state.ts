@@ -1,10 +1,10 @@
 export type State = Record<string, any>;
 
-type Effector = () => void;
+type Watcher = () => void;
 
 interface Ref<T> {
-    readonly effect: (fn: Effector) => void;
-    readonly commit: () => void;
+    readonly watch: (fn: Watcher, key?: string) => void;
+    readonly commit: (key?: string) => void;
     readonly snapshot: () => T;
     readonly emit: (event: string, data?: any) => void;
     readonly on: (event: string, fn: (data?: any) => void) => void;
@@ -30,7 +30,7 @@ export function createState<T extends State>(init: T): T {
     const state: State = {};
     const keepers: Record<string, any> = {};
     const dom = document.createDocumentFragment();
-    let effectors: Effector[] = [];
+    let watchers: Record<string, Watcher[]> = {};
 
     Object.keys(init).forEach((key: string) => {
         state[key] = init[key];
@@ -44,15 +44,28 @@ export function createState<T extends State>(init: T): T {
         });
     });
 
+    const getWatchers = (key: string): Watcher[] => {
+        if (!watchers[key]) {
+            watchers[key] = [];
+        }
+
+        return watchers[key];
+    };
+
     // Register a watcher for the given key.
     // If the key is a function, it will be called when the state is changed.
-    const effect = (fn: Effector) => {
-        effectors.push(fn); 
+    const watch = (fn: Watcher, key = '') => {
+        let watchers = getWatchers(key);
+        watchers.push(fn); 
     };
 
     // Trigger the commit function atomically.
-    const commit = () => {
-        effectors.forEach(fn => fn());
+    const commit = (key = '') => {
+        getWatchers('').forEach(fn => fn());
+
+        if (key != '') {
+            getWatchers(key).forEach(fn => fn());
+        }
     };
 
     // Snapshot the current state.
@@ -85,6 +98,6 @@ export function createState<T extends State>(init: T): T {
         delete keepers[key];
     };
 
-    (refMap as WeakMap<T, Ref<T>>).set(t, {effect, commit, snapshot, emit, on, keep, lose});
+    (refMap as WeakMap<T, Ref<T>>).set(t, {watch, commit, snapshot, emit, on, keep, lose});
     return t;
 }

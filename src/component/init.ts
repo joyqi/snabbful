@@ -14,7 +14,7 @@ export function initComponent(modules?: Module[]) {
             let vnode = fn(state, children);
             const patch = init(modules || detectModules(vnode), undefined, { experimental: { fragments: true } });
 
-            ref(state).effect(() => {
+            ref(state).watch(() => {
                 const newVnode = patch(vnode, fn(state, children));
                 Object.assign(vnode, newVnode);
             });
