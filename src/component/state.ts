@@ -25,10 +25,6 @@ export function ref<T extends State>(state: T): Ref<T> {
     return map;
 }
 
-export function unref<T extends State>(state: T): boolean {
-    return refMap.delete(state);
-}
-
 export function createState<T extends State>(init: T): T {
     const t = {} as T;
     const state: State = {};
