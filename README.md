@@ -3,10 +3,72 @@
 Snabbful is a simple, fast, and flexible library for building user interfaces by using [Snabbdom](https://github.com/snabbdom/snabbdom).
 We add a state management layer on top of Snabbdom, and we provide a simple API for building user interfaces.
 
-## Why Snabbful?
+## Installation
 
-Actually, the reason why I created Snabbful is personal.
-I'm a backend developer, and I'm used to render HTML pages on the server side.
-It's too complicated for me to build user interfaces in personal projects by separating the frontend and backend,
-and I'm also tired of using Webpack to build the frontend.
-These challenging scenes remind me of the days when I had jQuery.
+```bash
+npm install snabbful
+```
+
+## Usage
+
+### State management
+
+There's no need to use `useState` or `useReducer` hooks, you can change the state directly.
+And if you want to rerender the component, you can call `ref(state).commit()` method.
+
+```typescript
+import { ref } from 'snabbful';
+import { h } from 'snabbdom';
+
+interface State {
+  count: number;
+}
+
+function View(state: State) {
+  return h('div', [
+    h('button', {
+      on: {
+        click: () => {
+          state.count++;
+          ref(state).commit();
+        },
+      },
+    }, 'Increment'),
+    h('div', `Count: ${state.count}`),
+  ]);
+}
+```
+
+The state inside or outside the component is transparent, so you can change the state directly.
+
+```typescript
+import { initComponent, ref } from 'snabbful';
+import { h } from 'snabbdom';
+
+const component = initComponent([eventListenersModule]);
+
+interface State {
+  count: number;
+}
+
+function View(state: State) {
+  return h('div', [
+    h('button', {
+      on: {
+        click: () => {
+          state.count++;
+          ref(state).commit();
+        },
+      },
+    }, 'Increment'),
+    h('div', `Count: ${state.count}`),
+  ]);
+}
+
+const [ViewComponent, viewState] = component(View, { count: 0 });
+
+setInterval(() => {
+  viewState.count++;
+  ref(viewState).commit();
+}, 1000);
+```

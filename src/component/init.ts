@@ -1,5 +1,6 @@
 import { VNode, init, Module } from 'snabbdom';
 import { detectModules } from '../helpers';
+import { stateModule } from './module';
 import { createState, State, ref } from './state';
 
 type NullParams = {};
@@ -12,7 +13,10 @@ export function initComponent(modules?: Module[]) {
 
         return [(_: NullParams, children?: VNode[]): VNode => {
             let vnode = fn(state, children);
-            const patch = init(modules || detectModules(vnode), undefined, { experimental: { fragments: true } });
+            const componentModules = modules || detectModules(vnode);
+
+            componentModules.push(stateModule(state));
+            const patch = init(componentModules, undefined, { experimental: { fragments: true } });
 
             ref(state).watch(() => {
                 const newVnode = patch(vnode, fn(state, children));

@@ -25,10 +25,14 @@ export function ref<T extends State>(state: T): Ref<T> {
     return map;
 }
 
+export function unref<T extends State>(state: T): boolean {
+    return refMap.delete(state);
+}
+
 export function createState<T extends State>(init: T): T {
     const t = {} as T;
     const state: State = {};
-    const keepers: Record<string, any> = {};
+    const keepers = new Map<string, any>();
     const dom = document.createDocumentFragment();
     let watchers: Record<string, Watcher[]> = {};
 
@@ -87,15 +91,15 @@ export function createState<T extends State>(init: T): T {
     };
 
     const keep = (value: any, key = '') => {
-        if (!keepers[key]) {
-            keepers[key] = typeof value === 'function' ? value() : value;
+        if (!keepers.has(key)) {
+            keepers.set(key, typeof value === 'function' ? value() : value);
         }
 
-        return keepers[key];
+        return keepers.get(key);
     };
 
     const lose = (key: string) => {
-        delete keepers[key];
+        keepers.delete(key);
     };
 
     (refMap as WeakMap<T, Ref<T>>).set(t, {watch, commit, snapshot, emit, on, keep, lose});
