@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npx tsc",
     "example": "npm run build && npx browserify ./lib/example.js > ./example/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo test"
   },
   "repository": {
     "type": "git",
