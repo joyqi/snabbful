@@ -3,13 +3,13 @@ export type State = Record<string, any>;
 type Watcher = () => void;
 
 interface Ref<T> {
-    readonly watch: (fn: Watcher, key?: string) => void;
-    readonly commit: (key?: string) => void;
+    readonly watch: (fn: Watcher, key?: string) => this;
+    readonly commit: (key?: string) => this;
     readonly snapshot: () => T;
-    readonly emit: (event: string, data?: any) => void;
-    readonly on: (event: string, fn: (data?: any) => void) => void;
+    readonly emit: (event: string, data?: any) => this;
+    readonly on: (event: string, fn: (data?: any) => void) => this;
     readonly keep: <T>(value: T | {(): T}, key?: string) => T;
-    readonly lose: (key: string) => void;
+    readonly lose: (key: string) => this;
 }
 
 // Store the state and its watchers, keyed by the state object.
@@ -52,52 +52,57 @@ export function createState<T extends State>(init: T): T {
         return watchers[key];
     };
 
-    // Register a watcher for the given key.
-    // If the key is a function, it will be called when the state is changed.
-    const watch = (fn: Watcher, key = '') => {
-        let watchers = getWatchers(key);
-        watchers.push(fn); 
+    const r: Ref<T> = {
+        watch: (fn: Watcher, key = '') => {
+            let watchers = getWatchers(key);
+            watchers.push(fn);
+            return r;
+        },
+
+        commit: (key = '') => {
+            getWatchers('').forEach(fn => fn());
+
+            if (key != '') {
+                getWatchers(key).forEach(fn => fn());
+            }
+            
+            return r;
+        },
+
+        snapshot: () => {
+            const s = {} as T;
+            Object.assign(s, state);
+            return s;
+        },
+
+        emit: (event: string, data?: any) => {
+            const e = new CustomEvent(event, { detail: data });
+            dom.dispatchEvent(e);
+            return r;
+        },
+
+        on: (event: string, fn: (data?: any) => void) => {
+            dom.addEventListener(event, (e) => {
+                fn((e as CustomEvent).detail);
+            });
+
+            return r;
+        },
+
+        keep: (value: any, key = '') => {
+            if (!keepers.has(key)) {
+                keepers.set(key, typeof value === 'function' ? value() : value);
+            }
+
+            return keepers.get(key);
+        },
+
+        lose: (key: string) => {
+            keepers.delete(key);
+            return r;
+        },
     };
 
-    // Trigger the commit function atomically.
-    const commit = (key = '') => {
-        getWatchers('').forEach(fn => fn());
-
-        if (key != '') {
-            getWatchers(key).forEach(fn => fn());
-        }
-    };
-
-    // Snapshot the current state.
-    const snapshot = () => {
-        const s = {} as T;
-        Object.assign(s, state);
-        return s;
-    };
-
-    const emit = (event: string, data?: any) => {
-        const e = new CustomEvent(event, { detail: data });
-        dom.dispatchEvent(e);
-    };
-
-    const on = (event: string, fn: (data?: any) => void) => {
-        dom.addEventListener(event, (e) => {
-            fn((e as CustomEvent).detail);
-        });
-    };
-
-    const keep = (value: any, key = '') => {
-        if (!keepers.has(key)) {
-            keepers.set(key, typeof value === 'function' ? value() : value);
-        }
-
-        return keepers.get(key);
-    };
-
-    const lose = (key: string) => {
-        keepers.delete(key);
-    };
-
-    (refMap as WeakMap<T, Ref<T>>).set(t, {watch, commit, snapshot, emit, on, keep, lose});
+    (refMap as WeakMap<T, Ref<T>>).set(t, r);
     return t;
 }

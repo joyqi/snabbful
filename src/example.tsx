@@ -1,5 +1,4 @@
 import { attributesModule, eventListenersModule, init, jsx, toVNode } from 'snabbdom';
-import { $ } from './helpers';
 import { initComponent } from './component/init';
 import { ref } from './component/state';
 
@@ -18,8 +17,7 @@ function View(param: Param) {
 function Input(param: Param) {
     const click = () => {
         param.value = '';
-        ref(param).commit();
-        ref(param).emit('click');
+        ref(param).commit().emit('click');
     };
 
     return <p>
@@ -42,7 +40,7 @@ ref(inputState).on('click', () => {
     console.log('click');
 });    
 
-$<HTMLInputElement>('input')?.addEventListener('input', function() {
+document.querySelector('input')?.addEventListener('input', function() {
     viewState.value = this.value;
     inputState.value = this.value;
 
@@ -50,5 +48,5 @@ $<HTMLInputElement>('input')?.addEventListener('input', function() {
     ref(inputState).commit();
 });
 
-patch(toVNode($('#example-panel')), <ViewComponent></ViewComponent>);
-patch(toVNode($('#example-input')), <InputComponent></InputComponent>);
+patch(toVNode(document.querySelector('#example-panel') as Element), <ViewComponent></ViewComponent>);
+patch(toVNode(document.querySelector('#example-input') as Element), <InputComponent></InputComponent>);

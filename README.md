@@ -3,6 +3,8 @@
 Snabbful is a simple, fast, and flexible library for building user interfaces by using [Snabbdom](https://github.com/snabbdom/snabbdom).
 We add a state management layer on top of Snabbdom, and we provide a simple API for building user interfaces.
 
+[toc]
+
 ## Installation
 
 ```bash
