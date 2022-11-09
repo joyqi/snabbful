@@ -17,7 +17,7 @@ function View(param: Param) {
 function Input(param: Param) {
     const click = () => {
         param.value = '';
-        ref(param).commit().emit('click');
+        ref(param).emit('click');
     };
 
     return <p>
@@ -38,14 +38,11 @@ ref(inputState).watch(() => {
 
 ref(inputState).on('click', () => {
     console.log('click');
-});    
+});
 
 document.querySelector('input')?.addEventListener('input', function() {
     viewState.value = this.value;
     inputState.value = this.value;
-
-    ref(viewState).commit();
-    ref(inputState).commit();
 });
 
 patch(toVNode(document.querySelector('#example-panel') as Element), <ViewComponent></ViewComponent>);

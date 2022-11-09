@@ -16,7 +16,6 @@ npm install snabbful
 ### State management
 
 There's no need to use `useState` or `useReducer` hooks, you can change the state directly.
-And if you want to rerender the component, you can call `ref(state).commit()` method.
 
 ```typescript
 import { ref } from 'snabbful';
@@ -32,7 +31,6 @@ function View(state: State) {
       on: {
         click: () => {
           state.count++;
-          ref(state).commit();
         },
       },
     }, 'Increment'),
@@ -59,7 +57,6 @@ function View(state: State) {
       on: {
         click: () => {
           state.count++;
-          ref(state).commit();
         },
       },
     }, 'Increment'),
@@ -71,6 +68,5 @@ const [ViewComponent, viewState] = component(View, { count: 0 });
 
 setInterval(() => {
   viewState.count++;
-  ref(viewState).commit();
 }, 1000);
 ```

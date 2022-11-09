@@ -1,10 +1,16 @@
 export type State = Record<string, any>;
+type StateKey<T extends State> = '' | keyof T;
 
 type Watcher = () => void;
+type Committer<T> = (value: T) => void;
 
-interface Ref<T> {
-    readonly watch: (fn: Watcher, key?: string) => this;
-    readonly commit: (key?: string) => this;
+type WatcherMap<T extends State> = {
+    [K in StateKey<T>]?: Watcher[];
+};
+
+interface Ref<T extends State> {
+    readonly watch: (fn: Watcher, key?: StateKey<T>) => this;
+    readonly commit: (fn: Committer<T>, stopPropagation: boolean) => this;
     readonly snapshot: () => T;
     readonly emit: (event: string, data?: any) => this;
     readonly on: (event: string, fn: (data?: any) => void) => this;
@@ -26,30 +32,37 @@ export function ref<T extends State>(state: T): Ref<T> {
 }
 
 export function createState<T extends State>(init: T): T {
-    const t = {} as T;
-    const state: State = {};
+    const t = {};
+    const state: T = Object.assign({}, init);
     const keepers = new Map<string, any>();
     const dom = document.createDocumentFragment();
-    let watchers: Record<string, Watcher[]> = {};
+    let watchers: WatcherMap<T> = {};
 
-    Object.keys(init).forEach((key: string) => {
-        state[key] = init[key];
-
+    Object.keys(init).forEach((key: keyof T) => {
         Object.defineProperty(t, key, {
             enumerable: true,
             set: (v) => {
                 state[key] = v;
+                callWatchers(key);
             },
             get: () => state[key]
         });
     });
 
-    const getWatchers = (key: string): Watcher[] => {
+    const getWatchers = (key: StateKey<T>): Watcher[] => {
         if (!watchers[key]) {
             watchers[key] = [];
         }
 
-        return watchers[key];
+        return watchers[key] as Watcher[];
+    };
+
+    const callWatchers = (key: StateKey<T>): void => {
+        getWatchers(key).forEach(fn => fn());
+
+        if (key !== '') {
+            getWatchers('').forEach(fn => fn());
+        }
     };
 
     const r: Ref<T> = {
@@ -59,13 +72,15 @@ export function createState<T extends State>(init: T): T {
             return r;
         },
 
-        commit: (key = '') => {
-            getWatchers('').forEach(fn => fn());
+        commit: (fn: Committer<T>, stopPropagation = false) => {
+            const s = r.snapshot();
+            fn(s);
+            Object.assign(state, s);
 
-            if (key != '') {
-                getWatchers(key).forEach(fn => fn());
+            if (!stopPropagation) {
+                callWatchers('');
             }
-            
+
             return r;
         },
 
@@ -103,6 +118,6 @@ export function createState<T extends State>(init: T): T {
         },
     };
 
-    (refMap as WeakMap<T, Ref<T>>).set(t, r);
-    return t;
+    refMap.set(t, r);
+    return t as T;
 }
