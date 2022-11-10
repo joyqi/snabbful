@@ -10,7 +10,7 @@ type WatcherMap<T extends State> = {
 
 interface Ref<T extends State> {
     readonly watch: (fn: Watcher, key?: StateKey<T>) => this;
-    readonly commit: (fn: Committer<T>, stopPropagation: boolean) => this;
+    readonly commit: (fn: Committer<T>, silence: boolean) => this;
     readonly snapshot: () => T;
     readonly emit: (event: string, data?: any) => this;
     readonly on: (event: string, fn: (data?: any) => void) => this;
@@ -35,7 +35,8 @@ export function createState<T extends State>(init: T): T {
     const state: T = Object.assign({}, init);
     const keepers = new Map<string, any>();
     const dom = document.createDocumentFragment();
-    let watchers: WatcherMap<T> = {};
+    const watchers: WatcherMap<T> = {};
+    let lock = false;
 
     const t = new Proxy(state, {
         set: (target, key, value) => {
@@ -57,11 +58,21 @@ export function createState<T extends State>(init: T): T {
     };
 
     const callWatchers = (key: StateKey<T>): void => {
+        if (lock) {
+            return;
+        }
+
+        // Lock the state to prevent infinite loops.
+        lock = true;
+
         getWatchers(key).forEach(fn => fn());
 
         if (key !== '') {
             getWatchers('').forEach(fn => fn());
         }
+
+        // Unlock the state.
+        lock = false;
     };
 
     const r: Ref<T> = {
@@ -71,12 +82,12 @@ export function createState<T extends State>(init: T): T {
             return r;
         },
 
-        commit: (fn: Committer<T>, stopPropagation = false) => {
+        commit: (fn: Committer<T>, silence = false) => {
             const s = r.snapshot();
             fn(s);
             Object.assign(state, s);
 
-            if (!stopPropagation) {
+            if (!silence) {
                 callWatchers('');
             }
 
