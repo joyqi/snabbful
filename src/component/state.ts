@@ -32,21 +32,20 @@ export function ref<T extends State>(state: T): Ref<T> {
 }
 
 export function createState<T extends State>(init: T): T {
-    const t = {};
     const state: T = Object.assign({}, init);
     const keepers = new Map<string, any>();
     const dom = document.createDocumentFragment();
     let watchers: WatcherMap<T> = {};
 
-    Object.keys(init).forEach((key: keyof T) => {
-        Object.defineProperty(t, key, {
-            enumerable: true,
-            set: (v) => {
-                state[key] = v;
-                callWatchers(key);
-            },
-            get: () => state[key]
-        });
+    const t = new Proxy(state, {
+        set: (target, key, value) => {
+            target[key as StateKey<T>] = value;
+            callWatchers(key as StateKey<T>);
+            return true;
+        },
+        get: (target, key) => {
+            return target[key as StateKey<T>];
+        }
     });
 
     const getWatchers = (key: StateKey<T>): Watcher[] => {
@@ -119,5 +118,5 @@ export function createState<T extends State>(init: T): T {
     };
 
     refMap.set(t, r);
-    return t as T;
+    return t;
 }
