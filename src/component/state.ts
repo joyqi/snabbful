@@ -14,6 +14,7 @@ interface Ref<T extends State> {
     readonly snapshot: () => T;
     readonly emit: (event: string, data?: any) => this;
     readonly on: (event: string, fn: (data?: any) => void) => this;
+    readonly once: (event: string, fn: (data?: any) => void) => this;
     readonly keep: <T>(value: T | {(): T}, key?: string) => T;
     readonly lose: (key: string) => this;
 }
@@ -75,6 +76,16 @@ export function createState<T extends State>(init: T): T {
         lock = false;
     };
 
+    const listenEvent = (once: boolean, getter: () => Ref<T>) => {
+        return (event: string, fn: (data?: any) => void) => {
+            dom.addEventListener(event, (e) => {
+                fn((e as CustomEvent).detail);
+            }, { once });
+
+            return getter();
+        };
+    };
+
     const r: Ref<T> = {
         watch: (fn: Watcher, key = '') => {
             let watchers = getWatchers(key);
@@ -106,13 +117,9 @@ export function createState<T extends State>(init: T): T {
             return r;
         },
 
-        on: (event: string, fn: (data?: any) => void) => {
-            dom.addEventListener(event, (e) => {
-                fn((e as CustomEvent).detail);
-            });
+        on: listenEvent(false, () => r),
 
-            return r;
-        },
+        once: listenEvent(true, () => r),
 
         keep: (value: any, key = '') => {
             if (!keepers.has(key)) {
