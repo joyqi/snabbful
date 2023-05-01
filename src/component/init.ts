@@ -1,4 +1,4 @@
-import { VNode, init, Module } from 'snabbdom';
+import { VNode, init, Module, classModule, propsModule, attributesModule, eventListenersModule } from 'snabbdom';
 import { createState, State, ref } from './state';
 
 type NullParams = {};
@@ -20,5 +20,20 @@ export function initComponent(modules: Module[]) {
 
             return vnode;
         }, state];
+    };
+}
+
+export function bindComponent(src: VNode, modules?: Module[]) {
+    modules = modules || [classModule, propsModule, attributesModule, eventListenersModule];
+    const patch = init(modules, undefined, { experimental: { fragments: true } });
+    const component = initComponent(modules);
+
+    return <T extends State>(fn: TypedFunctionComponent<T>, params: T) => {
+        const [comp, state] = component(fn, params);
+        const vnode = comp({});
+
+        patch(src, vnode);
+
+        return state;
     };
 }
